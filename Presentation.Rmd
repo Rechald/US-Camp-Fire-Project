@@ -1,0 +1,189 @@
+---
+title: "Big Data Fire Presentation"
+date: "12/1/2018"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE,warning=FALSE)
+```
+
+
+```{r}
+knitr::include_graphics("Slide1.png")
+knitr::include_graphics("Slide2.png")
+knitr::include_graphics("Slide3.png")
+knitr::include_graphics("Slide4.png")
+```
+
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(dplyr)
+#install.packages("rgdal")
+library(rgdal)
+```
+
+```{r}
+fireData <- read_csv('fireData.csv')
+```
+
+### Cluster Map
+
+
+```{r}
+fire2011 <- fireData %>%
+  select(FIRE_YEAR, LATITUDE, LONGITUDE) %>%
+  filter(FIRE_YEAR == '2011')
+
+fire2012 <- fireData %>%
+  select(FIRE_YEAR, LATITUDE, LONGITUDE) %>%
+  filter(FIRE_YEAR == '2012')
+
+fire2013 <- fireData %>%
+  select(FIRE_YEAR, LATITUDE, LONGITUDE) %>%
+  filter(FIRE_YEAR == '2013')
+
+fire2014 <- fireData %>%
+  select(FIRE_YEAR, LATITUDE, LONGITUDE) %>%
+  filter(FIRE_YEAR == '2014')
+
+fire2015 <- fireData %>%
+  select(FIRE_YEAR, LATITUDE, LONGITUDE) %>%
+  filter(FIRE_YEAR == '2015')
+
+leaflet() %>%
+  addProviderTiles('Esri') %>%
+  setView(lat= 37.0902, lng=-95.7129,zoom = 3) %>%
+  addCircleMarkers(data = fire2011, radius = 0.1,clusterOptions = markerClusterOptions(),group='2011') %>%
+  addCircleMarkers(data = fire2012, radius = 0.1, clusterOptions = markerClusterOptions(),group='2012')  %>%
+  addCircleMarkers(data = fire2013, radius = 0.1, clusterOptions = markerClusterOptions(),group='2013')  %>%
+  addCircleMarkers(data = fire2014, radius = 0.1, clusterOptions = markerClusterOptions(),group='2014')  %>%
+  addCircleMarkers(data = fire2015, radius = 0.1, clusterOptions = markerClusterOptions(),group='2015') %>%
+  addLayersControl(
+    baseGroups = c("2011",'2012','2013','2014','2015'),
+    options = layersControlOptions(collapsed = FALSE))
+```
+
+
+```{r, include=FALSE}
+
+state_area <- as.data.frame(cbind('state' = state.abb, 'area'=state.area))
+state_area$area <- as.numeric(as.character(state_area$area))
+state_area$area <- state_area$area *640
+
+tmpdata <- fireData %>%
+  group_by(FIRE_YEAR,STATE) %>%
+  summarise(n =n()) %>%
+  left_join(state_area, by=c('STATE'='state'))
+
+
+tmpdata['unit_fire'] <- tmpdata$n/tmpdata$area
+tmpdata$unit_fire <- tmpdata$unit_fire * 1000000
+tmpdata$unit_fire[is.na(tmpdata$unit_fire)] <- 0
+
+shape <- readOGR(dsn=path.expand("tl_2018_us_state"))
+
+shape2011 <- shape
+shape2012 <- shape
+shape2013 <- shape
+shape2014 <- shape
+shape2015 <- shape
+
+shape2011@data <- left_join(shape2011@data, filter(tmpdata, FIRE_YEAR == 2011), by = c('STUSPS' = 'STATE') )
+shape2012@data <- left_join(shape2012@data, filter(tmpdata, FIRE_YEAR == 2012), by = c('STUSPS' = 'STATE') )
+shape2013@data <- left_join(shape2013@data, filter(tmpdata, FIRE_YEAR == 2013), by = c('STUSPS' = 'STATE') )
+shape2014@data <- left_join(shape2014@data, filter(tmpdata, FIRE_YEAR == 2014), by = c('STUSPS' = 'STATE') )
+shape2015@data <- left_join(shape2015@data, filter(tmpdata, FIRE_YEAR == 2015), by = c('STUSPS' = 'STATE') )
+
+shape2011@data[is.na(shape2011@data)] <- 0
+shape2012@data[is.na(shape2012@data)] <- 0
+shape2013@data[is.na(shape2013@data)] <- 0
+shape2014@data[is.na(shape2014@data)] <- 0
+shape2015@data[is.na(shape2015@data)] <- 0
+
+bins <- c(0, 100, 500, 1000, 5000,10000,15000, 20000)
+pal <- colorBin("YlOrRd", domain = shape2011@data$n, bins = bins)
+
+labels2011 <- sprintf(
+  "<strong>State: %s</strong><br/>Count=%g",
+  shape2011@data$NAME, shape2011@data$n
+) %>% lapply(htmltools::HTML)
+
+labels2012 <- sprintf(
+  "<strong>State: %s</strong><br/>Count=%g",
+  shape2012@data$NAME, shape2012@data$n
+) %>% lapply(htmltools::HTML)
+
+labels2013 <- sprintf(
+  "<strong>State: %s</strong><br/>Count=%g",
+  shape2013@data$NAME, shape2013@data$n
+) %>% lapply(htmltools::HTML)
+
+labels2014 <- sprintf(
+  "<strong>State: %s</strong><br/>Count=%g",
+  shape2014@data$NAME, shape2014@data$n
+) %>% lapply(htmltools::HTML)
+
+labels2015 <- sprintf(
+  "<strong>State: %s</strong><br/>Count=%g",
+  shape2015@data$NAME, shape2015@data$n
+) %>% lapply(htmltools::HTML)
+
+
+
+leaflet(shape2011) %>% 
+  addTiles() %>% 
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles(providers$Esri) %>%
+  addPolygons(data=shape2011,
+              weight=1,
+              fillColor = ~pal(n),
+              fillOpacity = 0.7,
+              group="2011",
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              label=~labels2011) %>%
+  addPolygons(data=shape2012,
+              weight=1,
+              fillColor = ~pal(n),
+              fillOpacity = 0.7,
+              group="2012",
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              label=~labels2012) %>%
+  addPolygons(data=shape2013,
+              weight=1,
+              fillColor = ~pal(n),
+              fillOpacity = 0.7,
+              group="2013",
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              label=~labels2013) %>%
+  addPolygons(data=shape2014,
+              weight=1,
+              fillColor = ~pal(n),
+              fillOpacity = 0.7,
+              group="2014",
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              label=~labels2014) %>%
+  addPolygons(data=shape2015,
+              weight=1,
+              fillColor = ~pal(n),
+              fillOpacity = 0.7,
+              group="2015",
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              label=~labels2015) %>%
+  addLegend(pal = pal, 
+            values = ~n,
+            opacity = 0.7, 
+            title = "Fire distribution (number of fires)",
+            position = "bottomright") %>%
+  addLayersControl(
+    baseGroups = c("2011", "2012","2013","2014","2015"),
+    options = layersControlOptions(collapsed = FALSE)
+  ) 
+```

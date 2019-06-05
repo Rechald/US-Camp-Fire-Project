@@ -1,0 +1,98 @@
+---
+title: "Fire Data EDA"
+date: "10/25/2018"
+output: html_document
+---
+
+```{r}
+library(RSQLite)
+#install.packages("dbplyr")
+library(dbplyr)
+library(dplyr)
+library(purrr)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("xts")
+library(xts)
+#install.packages("ggfortify")
+library(ggfortify)
+#install.packages("ggthemes")
+library(ggthemes)
+#install.packages("maps")
+library(maps)
+#install.packages("mapdata")
+library(mapdata)
+#install.packages("leaflet")
+library(leaflet)
+library(tidyverse)
+```
+
+```{r}
+# create db connection
+conn <- dbConnect(SQLite(), "FPA_FOD_20170508.sqlite")
+
+# see available tables
+dbListTables(conn)
+
+# pull the fires table into RAM
+fires <- tbl(conn, "Fires") %>% collect()
+
+# check size (should be 0.9 Gb)
+print(object.size(fires), units = 'Gb')
+
+# disconnect from db
+dbDisconnect(conn)
+```
+
+```{r}
+hist(fires$FIRE_YEAR)
+```
+```{r}
+hist(as.numeric(fires$DISCOVERY_TIME))
+```
+```{r}
+#install.packages('ggmap')
+library(ggmap)
+library(tidyverse)
+```
+```{r}
+# extract data for coordinates on map 
+fire_loc <- fires %>%
+  filter(FIRE_YEAR == 2010)%>%
+  filter(STATE == 'NY')
+
+
+# quick plot 
+qmplot(x=LONGITUDE, y=LATITUDE, data = fire_loc)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

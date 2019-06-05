@@ -1,0 +1,121 @@
+Ziyao Chen Fire Cause
+```{r}
+# loading data into R
+library(tidyverse)
+data<-read_csv("fireData.csv")
+```
+
+
+
+```{r}
+# Slicing the top 6 reasons of forest fire across the US. (Since the 5th reason is Missing/Undefined, we think it doesn't make sense, maybe it is just missiong records for these fires. Therefore, we slice the top 6 reasons and then subtract the 5th one)
+library(dplyr)
+top5_reason <- data %>%
+  group_by(STAT_CAUSE_DESCR) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  slice(1:6)
+```
+
+```{r}
+# delete missing/Undefined row and remain the top 5 meaningful reasons
+top5_reason<-top5_reason[-5,]
+```
+
+```{r}
+## plot top 5 reasons that cause fire across the country and for the whole time period
+top5_reason %>%
+  ggplot(aes(x=fct_reorder(STAT_CAUSE_DESCR,count),y=count/1000)) + geom_bar(stat='identity',fill="orange") + 
+  coord_flip() +
+  labs(y="amount(unit=thousand)",
+       x="Causes of Fire",
+       title='Top 5 Causes of Fire, 1992-2015',
+       caption="Including All States")+
+  theme_bw()
+```
+
+According to the plot, Debris Burning is the top 1 reason causing the forest fire which we should pay much attention to. And Miscellaneous, Arson, Lightning are also very important causes of forest fires.
+
+```{r}
+## Explore how the number of fires caused by the top 5 reasons change over time.
+data %>%
+  filter(STAT_CAUSE_DESCR %in% c('Debris Burning','Miscellaneous','Arson','Lightning','Equipment Use')) %>%
+  group_by(FIRE_YEAR,STAT_CAUSE_DESCR) %>%
+  summarize(count_cause=n()) %>%
+  ggplot(aes(x=FIRE_YEAR,y=count_cause,group=STAT_CAUSE_DESCR,color=STAT_CAUSE_DESCR)) + 
+  geom_point(size=1) + 
+  geom_line(size=0.5) + 
+  facet_wrap(~STAT_CAUSE_DESCR,nrow=5) + 
+  theme(legend.position="none")+
+  expand_limits(y=3000)+
+  xlab("Year")+
+  ylab("# of fires caused by the reason")+
+  ggtitle("Comparison of # of fires caused by the top5 reason")+
+  scale_x_continuous(breaks=c(1992,1995,2000,2005,2010,2015))+
+  scale_y_continuous(breaks=c(5000,10000,15000,20000,25000,30000))
+```
+
+
+
+```{r}
+## Explore how the weight of causes change over time in the US.
+data_cause<-data %>%
+  select(FIRE_YEAR,STAT_CAUSE_DESCR) %>% 
+  filter(STAT_CAUSE_DESCR %in% c('Debris Burning','Miscellaneous','Arson','Lightning','Equipment Use')) %>%
+  group_by(FIRE_YEAR,STAT_CAUSE_DESCR) 
+```
+
+```{r}
+seq_cause<-seq(1992,2015,by=1)
+data_cause_plot<-data_cause %>%
+  filter(FIRE_YEAR %in% seq_cause) %>% 
+  summarise(count=n()) %>%
+  mutate(cause_percent=count/sum(count))
+```
+
+```{r}
+# plot percentage of fire cauesd by the top 5 reasons
+data_cause_plot %>%
+  ggplot(aes(x=FIRE_YEAR,y=cause_percent,group=STAT_CAUSE_DESCR,color=STAT_CAUSE_DESCR)) + 
+  geom_point(size=1) + 
+  geom_line(size=0.5) + 
+  facet_wrap(~STAT_CAUSE_DESCR,nrow=5) + 
+  theme(legend.position="none")+
+  xlab("Year")+
+  ylab("% of fires caused by the reason")+
+  ggtitle("Comparison of % of fires caused by the top5 reason")+
+  scale_x_continuous(breaks=c(1992,1995,2000,2005,2010,2015))
+```
+
+What I spot from the two plots above is: as time goes by, a higher amount(percentage) of fire is caused by "Debris Burning" and "Miscellaneous", while a lower percentage of fire is caused by "Arson". "Equipment Use" and "Lightning" don't have an obvious trend. So the government or related departments may want to look at why the amount of "Debris Burning" and "Miscellaneous" is increasing and how to avoid that.
+
+```{r}
+# get top 5 reasons in CA
+top5_reason_CA <- data %>%
+  filter(STATE=="CA") %>% 
+  group_by(STAT_CAUSE_DESCR) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  slice(1:5)
+```
+
+```{r}
+## plot top 5 reasons that cause fire across the country and for the whole time period
+top5_reason_CA %>%
+  ggplot(aes(x=fct_reorder(STAT_CAUSE_DESCR,count),y=count/1000)) + geom_bar(stat='identity',fill="orange") + 
+  coord_flip() +
+  labs(y="amount(unit=thousand)",
+       x="Causes of Fire",
+       title='Top 5 Causes of Fire in CA, 1992-2015',
+       caption="Including All States")+
+  theme_bw()
+```
+
+As we can see, the top 5 reasons causing forest fire in CA is the same as those in the US, although the sequence is a little bit different.
+
+
+
+
+
+
+
